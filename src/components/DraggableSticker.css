@@ -1,0 +1,178 @@
+.sticker {
+  position: absolute;
+  user-select: none;
+  touch-action: none;
+  z-index: 50;
+  pointer-events: auto !important;
+}
+
+.sticker:active {
+  cursor: grabbing;
+}
+
+.sticker-drag-handle {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Highlight effect when hovered */
+.sticker-highlight {
+  outline: 2px solid #FF90B3;
+  outline-offset: 2px;
+  background-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 8px rgba(255, 144, 179, 0.5);
+}
+
+/* Subtle highlight effect when just hovering */
+.sticker-hover {
+  outline: 2px dashed #FF90B3;
+  outline-offset: 2px;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Animation classes */
+.sticker-bounce {
+  animation: bounce 2s infinite;
+}
+
+.sticker-spin {
+  animation: spin 4s linear infinite;
+}
+
+.sticker-pulse {
+  animation: pulse 2s infinite;
+}
+
+.sticker-wiggle {
+  animation: wiggle 2s infinite;
+}
+
+.sticker-shine {
+  animation: shine 3s infinite;
+}
+
+.sticker-rainbow {
+  animation: rainbow 4s infinite;
+}
+
+.sticker-float {
+  animation: float 3s infinite;
+}
+
+.sticker-glow {
+  animation: glow 2s infinite;
+}
+
+.sticker-shake {
+  animation: shake 2s infinite;
+}
+
+.sticker-sway {
+  animation: sway 3s infinite;
+}
+
+.sticker-pop {
+  animation: pop 2s infinite;
+}
+
+.sticker-flutter {
+  animation: flutter 3s infinite;
+}
+
+/* Subtle pulsing animation when stickers are first added */
+@keyframes newSticker {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.rotation-handle {
+  animation: float-up 0.5s ease-out;
+}
+
+@keyframes float-up {
+  0% { transform: translateY(10px) translateX(-50%); opacity: 0; }
+  100% { transform: translateY(0) translateX(-50%); opacity: 1; }
+}
+
+/* Update animation styles to not conflict with rotation */
+
+/* Animation keyframes that don't reset rotation */
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+  
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(5deg); }
+    75% { transform: rotate(-5deg); }
+  }
+  
+  /* Other animation definitions */
+
+@keyframes shine {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; filter: brightness(1.3); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes glow {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.3) drop-shadow(0 0 5px rgba(255, 255, 255, 0.7)); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+@keyframes sway {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(5deg); }
+}
+
+@keyframes pop {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+@keyframes flutter {
+  0%, 100% { transform: translateY(0) translateX(0) rotate(0deg); }
+  33% { transform: translateY(-5px) translateX(3px) rotate(5deg); }
+  66% { transform: translateY(-2px) translateX(-3px) rotate(-5deg); }
+}
+
+/* Override animation styles when not active to prevent reverting rotation */
+.sticker:hover .sticker-bounce,
+.sticker:hover .sticker-spin,
+.sticker:hover .sticker-pulse,
+.sticker:hover .sticker-wiggle,
+.sticker:hover .sticker-shine,
+.sticker:hover .sticker-rainbow,
+.sticker:hover .sticker-float,
+.sticker:hover .sticker-glow,
+.sticker:hover .sticker-shake,
+.sticker:hover .sticker-sway,
+.sticker:hover .sticker-pop,
+.sticker:hover .sticker-flutter {
+  animation: none;
+}
