@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Rnd } from 'react-rnd';
-import { RotateCcw } from 'lucide-react';
+import { LucideIcon, RotateCcw } from 'lucide-react';
 
 interface DraggableStickerProps {
   id: string;
@@ -11,7 +11,7 @@ interface DraggableStickerProps {
   scale: number;
   containerWidth: number;
   containerHeight: number;
-  icon: React.ElementType;
+  icon? : LucideIcon;
   animation: string;
   isImage?: boolean;
   imageSrc?: string;
@@ -19,6 +19,7 @@ interface DraggableStickerProps {
   onRotationChange: (id: string, rotation: number) => void;
   onScaleChange: (id: string, scale: number) => void;
   onDelete: (id: string) => void;
+  isGlobal?: boolean;
 }
 
 const DraggableSticker: React.FC<DraggableStickerProps> = ({
@@ -31,11 +32,13 @@ const DraggableSticker: React.FC<DraggableStickerProps> = ({
   containerHeight,
   icon: Icon,
   animation,
-  
+  isImage,
+  imageSrc,
   onPositionChange,
   onRotationChange,
   onScaleChange,
   onDelete,
+  isGlobal,
 }) => {
   const [isRotating, setIsRotating] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -44,8 +47,12 @@ const DraggableSticker: React.FC<DraggableStickerProps> = ({
   // Convert percentage to absolute pixel position
   const getPixelPosition = () => {
     return {
-      x: (position.x / 100) * containerWidth,
-      y: (position.y / 100) * containerHeight,
+      x: isGlobal 
+        ? (position.x / 100) * containerWidth 
+        : (position.x / 100) * containerWidth,
+      y: isGlobal 
+        ? (position.y / 100) * containerHeight 
+        : (position.y / 100) * containerHeight
     };
   };
 
@@ -90,6 +97,8 @@ const DraggableSticker: React.FC<DraggableStickerProps> = ({
     <Rnd
       position={{ x: pixelPosition.x, y: pixelPosition.y }}
       size={{ width: size, height: size }}
+      maxWidth={containerWidth * 10} // Allow stickers to grow very large
+      maxHeight={containerHeight * 10}
       onDragStart={() => {
         setIsSelected(true);
       }}
@@ -207,7 +216,15 @@ const DraggableSticker: React.FC<DraggableStickerProps> = ({
       >
         {/* Apply animation to the icon only, not the wrapper */}
         <div className={`flex items-center justify-center ${isSelected || isHovered ? '' : `sticker-${animation}`}`}>
-          <Icon size={size * 0.8} color={color} />
+        {isImage ? (
+            <img 
+              src={imageSrc} 
+              alt="sticker" 
+              className="w-full h-full object-contain" 
+            />
+          ) : (
+            Icon && <Icon size={size * 0.8} color={color} />
+          )}
         </div>
         
         {/* Rotation handle - only show when selected */}

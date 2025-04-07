@@ -1,20 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Download, Share2, Sparkles, Heart, Star, Cat, Music, Crown, Rainbow, Cloud, Sun, Moon, Coffee, Flower, Cake, Gift, Router as Butterfly, GraduationCap, Scroll, PartyPopper, Calendar } from 'lucide-react';
+import { Camera, Download, Share2, Sparkles, Heart, Star, Cat, Music, Crown, Rainbow, Cloud, Sun, Moon, Coffee, Flower, Cake, Gift, Router as Butterfly, Scroll, PartyPopper, Calendar } from 'lucide-react';
 import { Rnd } from 'react-rnd';
 import DraggableSticker from './DraggableSticker';
 import PhotoFrame, { BACKGROUND_STYLES } from './PhotoFrame'; // Import new frames and background styles component
 import './DraggableSticker.css';
 import './PhotoFrame.css'; 
 import domtoimage from 'dom-to-image'
+import ImageStickerSelector, { IMAGE_STICKERS } from './ImageStickers';
+
 
 interface Sticker {
   id: string;
   type: string;
-  photoIndex: number;
+  photoIndex: number | null;
   position: { x: number; y: number };
   color: string;
   rotation: number;
   scale: number;
+  isImage?: boolean;
+  imageSrc?: string;
+  isGlobal?: boolean; 
 }
 
 interface Caption {
@@ -29,14 +34,14 @@ interface Caption {
 }
 
 const COUNTDOWN_TIME = 3;
-const PHOTOS_TO_TAKE = 3;
+const PHOTOS_TO_TAKE = 4;
 const FILTERS = [
   { name: 'Normal', class: '' },
   { name: 'Grayscale', class: 'grayscale' },
   { name: 'Sepia', class: 'sepia' },
   { name: 'Bright', class: 'brightness-125' },
   { name: 'Vintage', class: 'sepia brightness-75 contrast-125' },
-  { name: 'Cool', class: 'hue-rotate-60 brightness-110' },
+  { name: 'Cool', class: 'hue-rotate-20 brightness-110' },
   { name: 'Warm', class: 'hue-rotate-330 brightness-110' },
   { name: 'Dreamy', class: 'brightness-110 contrast-75 saturate-150' },
   { name: 'Dramatic', class: 'contrast-125 saturate-150 brightness-75' },
@@ -60,7 +65,6 @@ const STICKERS = [
   { type: 'cake', icon: Cake, color: '#FF9999', animation: 'pop' },
   { type: 'gift', icon: Gift, color: '#9B59B6', animation: 'bounce' },
   { type: 'butterfly', icon: Butterfly, color: '#FF90B3', animation: 'flutter' },
-  { type: 'graduation-cap', icon: GraduationCap, color: '#000000', animation: 'float' },
   { type: 'diploma', icon: Scroll, color: '#8B4513', animation: 'shine' },
   { type: 'confetti', icon: PartyPopper, color: '#FFD700', animation: 'pop' },
   { type: 'year', icon: Calendar, color: '#3498DB', animation: 'pulse' },
@@ -135,6 +139,25 @@ const PhotoBooth: React.FC = () => {
     await audio.play();
   };
 
+  // Add a handler for image sticker selection
+
+// Update your handleStickerDragStart function
+const handleStickerDragStart = (type: string, color: string) => {
+  // Log for debugging
+  console.log('Starting drag for icon:', type, color);
+  // Store as regular icon sticker (not image)
+  setIsDraggingSticker(`${type}-${color}`);
+};
+
+// Keep your image sticker handler separate
+const handleImageStickerDragStart = (id: string, imageSrc: string) => {
+  // Log for debugging
+  console.log('Starting drag for image:', id, imageSrc);
+  setIsDraggingSticker(`image-${id}`);
+  sessionStorage.setItem('draggedStickerSrc', imageSrc);
+};
+
+
   const capturePhoto = async () => {
     if (videoRef.current && canvasRef.current) {
       await playShutterSound();
@@ -172,28 +195,53 @@ const PhotoBooth: React.FC = () => {
     setTimeout(() => setShowConfetti(false), 3000);
   };
 
-  const handleStickerDragStart = (type: string, color: string) => {
-    setIsDraggingSticker(`${type}-${color}`);
-  };
-
   const handlePhotoDrop = (photoIndex: number, e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    console.log('Drop event with sticker:', isDraggingSticker); // Add debug logging
+    
     if (isDraggingSticker) {
-      const [type, color] = isDraggingSticker.split('-');
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = ((e.clientX - rect.left) / rect.width) * 100;
-      const y = ((e.clientY - rect.top) / rect.height) * 100;
-
-      const newSticker: Sticker = {
-        id: `sticker-${Date.now()}`,
-        type,
-        photoIndex,
-        position: { x, y },
-        color,
-        rotation: 0,
-        scale: 1,
-      };
-      setStickers(prev => [...prev, newSticker]);
+      if (isDraggingSticker.startsWith('image-')) {
+        // Handle image sticker
+        const type = isDraggingSticker.split('-')[1];
+        const imgSrc = sessionStorage.getItem('draggedStickerSrc') || '';
+        
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+  
+        const newSticker: Sticker = {
+          id: `sticker-${Date.now()}`,
+          type,
+          photoIndex,
+          position: { x, y },
+          color: '',
+          rotation: 0,
+          scale: 1,
+          isImage: true,
+          imageSrc: imgSrc // Make sure this property name matches your interface
+        };
+        setStickers(prev => [...prev, newSticker]);
+      } else {
+        // Handle regular icon sticker
+        const [type, color] = isDraggingSticker.split('-');
+        
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+  
+        const newSticker: Sticker = {
+          id: `sticker-${Date.now()}`,
+          type,
+          photoIndex,
+          position: { x, y },
+          color,
+          rotation: 0,
+          scale: 1,
+          isImage: false // Explicitly set to false
+        };
+        setStickers(prev => [...prev, newSticker]);
+      }
     }
     setIsDraggingSticker(null);
   };
@@ -231,7 +279,7 @@ const PhotoBooth: React.FC = () => {
   const updateStickerScale = (stickerId: string, scale: number) => {
     setStickers(prev =>
       prev.map(sticker =>
-        sticker.id === stickerId ? { ...sticker, scale: Math.max(0.5, Math.min(2, scale)) } : sticker
+        sticker.id === stickerId ? { ...sticker, scale: Math.max(0.5, Math.min(15, scale)) } : sticker
       )
     );
   };
@@ -259,81 +307,34 @@ const capturePhotoStrip = async () => {
   if (!photoStripRef.current) return null;
   
   try {
-    // Hide UI elements temporarily for capture
-    const buttonsToHide = photoStripRef.current.querySelectorAll('.action-button, button');
-    buttonsToHide.forEach(btn => (btn as HTMLElement).style.display = 'none');
-
-    if (selectedBackground.id === 'checkerboard') {
-      photoStripRef.current.setAttribute('data-bg-checkerboard', 'true');
+    // Save current background
+    const originalBackground = photoStripRef.current.style.background;
+    
+    // For custom image backgrounds, set explicit inline styles
+    if (selectedBackground.id === 'custom-photoframe') {
+      photoStripRef.current.style.backgroundRepeat = 'no-repeat';
+      photoStripRef.current.style.backgroundSize = 'contain';
+      photoStripRef.current.style.backgroundPosition = 'center';
+      photoStripRef.current.style.backgroundColor = 'white'; 
     }
-
-    const images = photoStripRef.current.querySelectorAll('img');
-    const originalFilters: string[] = [];
-
-    // Store original styles and apply selected filter directly
-    images.forEach(img => {
-      const imgElement = img as HTMLElement;
-      originalFilters.push(imgElement.style.filter);
-      
-      // Convert CSS class-based filters to inline filter styles
-      if (selectedFilter) {
-        switch (selectedFilter) {
-          case 'grayscale':
-            imgElement.style.filter = 'grayscale(100%)';
-            break;
-          case 'sepia':
-            imgElement.style.filter = 'sepia(100%)';
-            break;
-          case 'brightness-125':
-            imgElement.style.filter = 'brightness(1.25)';
-            break;
-          case 'sepia brightness-75 contrast-125':
-            imgElement.style.filter = 'sepia(100%) brightness(0.75) contrast(1.25)';
-            break;
-          case 'hue-rotate-60 brightness-110':
-            imgElement.style.filter = 'hue-rotate(60deg) brightness(1.1)';
-            break;
-          case 'hue-rotate-330 brightness-110':
-            imgElement.style.filter = 'hue-rotate(330deg) brightness(1.1)';
-            break;
-          case 'brightness-110 contrast-75 saturate-150':
-            imgElement.style.filter = 'brightness(1.1) contrast(0.75) saturate(1.5)';
-            break;
-          case 'contrast-125 saturate-150 brightness-75':
-            imgElement.style.filter = 'contrast(1.25) saturate(1.5) brightness(0.75)';
-            break; 
-          case 'brightness-110 saturate-75':
-            imgElement.style.filter = 'brightness(1.1) saturate(0.75)';
-            break;
-          case 'brightness-125 contrast-75 hue-rotate-30':
-            imgElement.style.filter = 'brightness(1.25) contrast(0.75) hue-rotate(30deg)';
-            break;
-          default:
-            break;
-        }
+    
+    // Hide UI elements you don't want in the captured image
+    const buttonsToHide = document.querySelectorAll('.hide-for-capture');
+    buttonsToHide.forEach(btn => (btn as HTMLElement).style.display = 'none');
+    
+    const dataUrl = await domtoimage.toJpeg(photoStripRef.current, {
+      quality: 0.95,
+      width: photoStripRef.current.offsetWidth,
+      height: photoStripRef.current.offsetHeight,
+      style: {
+        'background-repeat': 'no-repeat',
+        'background-size': 'cover',
+        'background-position': 'center',
       }
     });
     
-    // Use dom-to-image instead of html2canvas
-    const dataUrl = await domtoimage.toJpeg(photoStripRef.current, {
-      quality: 0.95,
-      bgcolor: 'white',
-      style: {
-        'background-repeat': 'repeat',
-        'background-size': '20px 20px',
-        'transform': 'none',
-        'zoom': '1'
-      }
-    });
-
-    images.forEach((img, index) => {
-      (img as HTMLElement).style.filter = originalFilters[index];
-    });
-
-        // Remove special attribute
-    if (selectedBackground.id === 'checkerboard') {
-      photoStripRef.current.removeAttribute('data-bg-checkerboard');
-    }
+    // Restore original background
+    photoStripRef.current.style.background = originalBackground;
     
     // Restore UI elements
     buttonsToHide.forEach(btn => (btn as HTMLElement).style.display = '');
@@ -370,6 +371,57 @@ const capturePhotoStrip = async () => {
     } catch (err) {
       console.error('Error sharing:', err);
     }
+  };
+
+  const handleStripDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!isDraggingSticker || !photoStripRef.current) return;
+  
+    const stripRect = photoStripRef.current.getBoundingClientRect();
+    const dropX = e.clientX - stripRect.left;
+    const dropY = e.clientY - stripRect.top;
+    
+    // Convert to percentage of the strip dimensions
+    const xPercent = (dropX / stripRect.width) * 100;
+    const yPercent = (dropY / stripRect.height) * 100;
+    
+    // Create a global sticker that exists on the background
+    if (isDraggingSticker.startsWith('image-')) {
+      // Handle image sticker
+      const type = isDraggingSticker.split('-')[1];
+      const imgSrc = sessionStorage.getItem('draggedStickerSrc') || '';
+      
+      const newSticker: Sticker = {
+        id: `sticker-${Date.now()}`,
+        type,
+        photoIndex: null, // Null indicates it's on the background
+        position: { x: xPercent, y: yPercent },
+        color: '',
+        rotation: 0,
+        scale: 1,
+        isImage: true,
+        imageSrc: imgSrc,
+        isGlobal: true
+      };
+      setStickers(prev => [...prev, newSticker]);
+    } else {
+      // Handle icon sticker
+      const [type, color] = isDraggingSticker.split('-');
+      
+      const newSticker: Sticker = {
+        id: `sticker-${Date.now()}`,
+        type,
+        photoIndex: null, // Null indicates it's on the background
+        position: { x: xPercent, y: yPercent },
+        color,
+        rotation: 0,
+        scale: 1,
+        isGlobal: true
+      };
+      setStickers(prev => [...prev, newSticker]);
+    }
+    
+    setIsDraggingSticker(null);
   };
 
   useEffect(() => {
@@ -525,6 +577,10 @@ const capturePhotoStrip = async () => {
                   </div>
                 ))}
               </div>
+
+              <ImageStickerSelector 
+                onStickerSelect={handleImageStickerDragStart}
+              />
               
               <h3 className="text-center text-lg font-medium text-soft-charcoal mb-2">Fonts</h3>
               <div className="space-y-2">
@@ -571,20 +627,23 @@ const capturePhotoStrip = async () => {
         </div>
 
         <div ref={photoStripRef} className="photo-strip p-4 rounded-2xl shadow-kawaii" 
-             style={{ background: selectedBackground.backgroundStyle }}>
+             style={{ background: selectedBackground.backgroundStyle }}
+             onDragOver={(e) => e.preventDefault()}
+             onDrop={(e) => handleStripDrop(e)}
+             >
           <div className="space-y-4">
             {photos.map((photo, index) => (
               <div
                 key={index}
                 ref={el => photoRefs.current[index] = el}
-                className="relative rounded-lg overflow-hidden"
+                className="relative overflow-hidden"
                 style={{ position: 'relative' }}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => handlePhotoDrop(index, e)}
               >
                 {/* Wrap the image with the PhotoFrame component */}
                 <PhotoFrame backgroundStyle={selectedBackground} isIndividualPhoto={true} data-photo-frame>
-                <div className="rounded-lg overflow-hidden">
+                <div className="overflow-hidden">
                   <img
                     src={photo}
                     alt={`Photo ${index + 1}`}
@@ -599,8 +658,9 @@ const capturePhotoStrip = async () => {
                     const containerWidth = photoContainerDimensions[index]?.width || 640;
                     const containerHeight = photoContainerDimensions[index]?.height || 480;
                     
-                    const stickerIcon = STICKERS.find(s => s.type === sticker.type)?.icon || Heart;
-                    const animation = STICKERS.find(s => s.type === sticker.type)?.animation || 'bounce';
+                    const stickerIcon = !sticker.isImage ? STICKERS.find(s => s.type === sticker.type)?.icon || Heart : undefined;
+
+                    const animation = sticker.isImage ? IMAGE_STICKERS.find(s => s.id === sticker.type)?.animation || 'bounce' : STICKERS.find(s => s.type === sticker.type)?.animation || 'bounce';
                     
                     return (
                       <DraggableSticker
@@ -615,6 +675,8 @@ const capturePhotoStrip = async () => {
                         containerHeight={containerHeight}
                         icon={stickerIcon}
                         animation={animation}
+                        isImage={sticker.isImage}
+                        imageSrc={sticker.imageSrc}
                         onPositionChange={(id, position) => {
                           updateStickerPosition(id, 
                             { 
@@ -666,7 +728,7 @@ const capturePhotoStrip = async () => {
                   ))}
                 <button
                   onClick={() => addCaption(index)}
-                  className="absolute bottom-5 right-5 button-bounce bg-icy-blue text-soft-charcoal px-3 py-1 rounded-full font-medium shadow-kawaii hover:bg-opacity-80 transition-colors text-sm action-button "
+                  className="absolute bottom-5 right-5 button-bounce bg-icy-blue text-soft-charcoal px-3 py-1 rounded-full font-medium shadow-kawaii hover:bg-opacity-80 transition-colors text-sm action-button hide-for-capture"
                 >
                   Add Text
                 </button>
@@ -674,17 +736,59 @@ const capturePhotoStrip = async () => {
             ))}
           </div>
 
+          {/* Render global stickers (not associated with any specific photo) */}
+          {stickers
+            .filter(sticker => sticker.photoIndex === null)
+            .map(sticker => {
+              // Use the photostrip dimensions for global stickers
+              const stripWidth = photoStripRef.current?.offsetWidth || 800;
+              const stripHeight = photoStripRef.current?.offsetHeight || 1200;
+              
+              const stickerIcon = !sticker.isImage ? STICKERS.find(s => s.type === sticker.type)?.icon || Heart : undefined;
+              const animation = sticker.isImage ? IMAGE_STICKERS.find(s => s.id === sticker.type)?.animation || 'bounce' : STICKERS.find(s => s.type === sticker.type)?.animation || 'bounce';
+              
+              return (
+                <DraggableSticker
+                  key={sticker.id}
+                  id={sticker.id}
+                  type={sticker.type}
+                  color={sticker.color}
+                  position={sticker.position}
+                  rotation={sticker.rotation}
+                  scale={sticker.scale}
+                  containerWidth={stripWidth}
+                  containerHeight={stripHeight}
+                  icon={stickerIcon}
+                  animation={animation}
+                  isImage={sticker.isImage}
+                  imageSrc={sticker.imageSrc}
+                  onPositionChange={(id, position) => {
+                    setStickers(prev =>
+                      prev.map(s =>
+                        s.id === id ? { ...s, position } : s
+                      )
+                    );
+                  }}
+                  onRotationChange={updateStickerRotation}
+                  onScaleChange={updateStickerScale}
+                  onDelete={(id) => {
+                    setStickers(prev => prev.filter(s => s.id !== id));
+                  }}
+                />
+              );
+            })}
+
           {photos.length === PHOTOS_TO_TAKE && (
             <div className="flex justify-center space-x-4 mt-4">
               <button
                 onClick={downloadStrip}
-                className="button-bounce bg-cute-pink text-white px-6 py-3 rounded-full font-semibold shadow-kawaii flex items-center space-x-2 hover:bg-opacity-90 transition-colors action-button"
+                className="button-bounce bg-cute-pink text-white px-6 py-3 rounded-full font-semibold shadow-kawaii flex items-center space-x-2 hover:bg-opacity-90 transition-colors action-button hide-for-capture"
               >
                 <Download size={20} />
               </button>
               <button
                 onClick={shareStrip}
-                className="button-bounce bg-icy-blue text-soft-charcoal px-6 py-3 rounded-full font-semibold shadow-kawaii flex items-center space-x-2 hover:bg-opacity-90 transition-colors action-button"
+                className="button-bounce bg-icy-blue text-soft-charcoal px-6 py-3 rounded-full font-semibold shadow-kawaii flex items-center space-x-2 hover:bg-opacity-90 transition-colors action-button hide-for-capture"
               >
                 <Share2 size={20} />
               </button>
