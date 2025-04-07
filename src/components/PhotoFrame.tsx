@@ -1,6 +1,12 @@
 import React from 'react';
 import './PhotoFrame.css';
 
+import customFrameImage from '../assets/frames/download.jpeg';
+import customFrameImage1 from '../assets/frames/space.jpeg';
+import customFrameImage2 from '../assets/frames/forest.jpeg';
+import customFrameImage3 from '../assets/frames/pattern.jpeg';
+import customFrameImage4 from '../assets/frames/Floral Symphony.jpeg';
+import customFrameImage5 from '../assets/frames/glass.jpeg';
 export interface BackgroundStyle {
   id: string;
   name: string;
@@ -75,16 +81,9 @@ export const BACKGROUND_STYLES: BackgroundStyle[] = [
   {
     id: 'hearts',
     name: 'Hearts',
-    thumbnail: '❤️',
-    backgroundStyle: '#FFEEFA',
+    thumbnail: '🖤',
+    backgroundStyle: '#000000',
     className: 'bg-hearts-pattern'
-  },
-  {
-    id: 'clouds',
-    name: 'Clouds',
-    thumbnail: '☁️',
-    backgroundStyle: 'linear-gradient(to bottom, #E6F7FF, #FFFFFF)',
-    className: 'bg-clouds-pattern'
   },
   {
     id: 'pastel-lavender',
@@ -94,19 +93,54 @@ export const BACKGROUND_STYLES: BackgroundStyle[] = [
     className: ''
   },
   {
-    id: 'mint',
-    name: 'Mint',
-    thumbnail: '🍃',
-    backgroundStyle: '#E0FFF0',
-    className: ''
-  },
-  {
     id: 'kawaii-grid',
     name: 'Grid',
     thumbnail: '📏',
     backgroundStyle: 'white',
     className: 'bg-kawaii-grid'
-  }
+  },
+  {
+    id: 'custom-photoframe',
+    name: 'My Frame',
+    thumbnail: '🌃',
+    backgroundStyle: `url(${customFrameImage}) no-repeat center/cover`,
+    className: ''
+  },
+  {
+    id: 'custom-photoframe',
+    name: 'My Frame',
+    thumbnail: '🪐',
+    backgroundStyle: `url(${customFrameImage1}) no-repeat center/cover`,
+    className: ''
+  },
+  {
+    id: 'custom-photoframe',
+    name: 'My Frame',
+    thumbnail: '🌲',
+    backgroundStyle: `url(${customFrameImage2}) no-repeat center/cover`,
+    className: ''
+  },
+  {
+    id: 'custom-photoframe',
+    name: 'My Frame',
+    thumbnail: '🖼️',
+    backgroundStyle: `url(${customFrameImage3}) no-repeat center/cover`,
+    className: ''
+  },
+  {
+    id: 'custom-photoframe',
+    name: 'My Frame',
+    thumbnail: '💮',
+    backgroundStyle: `url(${customFrameImage4}) no-repeat center/cover`,
+    className: ''
+  },
+  {
+    id: 'custom-photoframe',
+    name: 'My Frame',
+    thumbnail: '💎',
+    backgroundStyle: `url(${customFrameImage5}) no-repeat center/cover`,
+    className: ''
+  },
 ];
 
 interface PhotoFrameProps {
@@ -132,7 +166,7 @@ const PhotoFrame: React.FC<PhotoFrameProps> = ({
         background: (!isIndividualPhoto || preservedBackground) ? backgroundStyle.backgroundStyle: 'transparent',
         position: 'relative',
         overflow: 'hidden',
-        borderRadius: '0.5rem',
+        borderRadius: '0',
         // Add subtle border to individual photos to define their space
         padding: isIndividualPhoto ? '0.5rem' : '1rem'
       }}

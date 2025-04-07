@@ -54,3 +54,7 @@
   background-position: 0 0 !important;
 }
 
+.prevent-background-repeat {
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+}
