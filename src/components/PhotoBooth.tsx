@@ -115,18 +115,34 @@ const PhotoBooth: React.FC = () => {
   useEffect(() => {
     const startCamera = async () => {
       try {
-        const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        // Prefer front camera on mobile
+        const constraints = { 
+          video: { 
+            facingMode: "user",
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          } 
+        };
+        const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
         setStream(mediaStream);
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
+          
+          // Update canvas size to match video dimensions
+          videoRef.current.onloadedmetadata = () => {
+            if (canvasRef.current && videoRef.current) {
+              canvasRef.current.width = videoRef.current.videoWidth;
+              canvasRef.current.height = videoRef.current.videoHeight;
+            }
+          };
         }
       } catch (err) {
         console.error('Error accessing camera:', err);
       }
     };
-
+  
     startCamera();
-
+  
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
@@ -346,17 +362,35 @@ const capturePhotoStrip = async () => {
   }
 };
 
-  const downloadStrip = async () => {
-    const stripImage = await capturePhotoStrip();
-    if (stripImage) {
-      const link = document.createElement('a');
+const downloadStrip = async () => {
+  const stripImage = await capturePhotoStrip();
+  if (stripImage) {
+    try {
       const date = new Date();
       const formattedDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
-      link.download = `kawaii-photobooth-${formattedDate}.jpg`;
+      const filename = `kawaii-photobooth-${formattedDate}.jpg`;
+      
+      // Send to server
+      await fetch('http://localhost:3001/save-photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          imageData: stripImage,
+          filename 
+        }),
+      });
+      
+      alert(`Photo saved to your-photo-strip/${filename}`);
+    } catch (error) {
+      console.error('Error saving photo:', error);
+      // Fall back to browser download
+      const link = document.createElement('a');
+      link.download = `kawaii-photobooth.jpg`;
       link.href = stripImage;
       link.click();
     }
-  };
+  }
+};
 
   const shareStrip = async () => {
     try {
@@ -647,7 +681,7 @@ const capturePhotoStrip = async () => {
                   <img
                     src={photo}
                     alt={`Photo ${index + 1}`}
-                    className={`w-full ${selectedFilter}`}
+                    className={`w-full h-full object-cover ${selectedFilter}`}
                   />
                 </div>
                 </PhotoFrame>

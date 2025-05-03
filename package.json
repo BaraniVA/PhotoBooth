@@ -7,10 +7,13 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:web": "vite build --base=/ --mode production && cp public/*.* dist/"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "dom-to-image": "^2.6.0",
+    "express": "^5.1.0",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
