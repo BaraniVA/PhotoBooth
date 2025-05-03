@@ -106,6 +106,13 @@ const PhotoBooth: React.FC = () => {
   const [isDraggingSticker, setIsDraggingSticker] = useState<string | null>(null);
   const [photoContainerDimensions, setPhotoContainerDimensions] = useState<{[key: number]: {width: number, height: number}}>({});
   const [selectedBackground, setSelectedBackground] = useState(BACKGROUND_STYLES[0]);
+  const [selectedStickerForPlacement, setSelectedStickerForPlacement] = useState<{
+    type: string;
+    color: string;
+    isImage: boolean;
+    imageSrc?: string;
+  } | null>(null);
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -115,34 +122,18 @@ const PhotoBooth: React.FC = () => {
   useEffect(() => {
     const startCamera = async () => {
       try {
-        // Prefer front camera on mobile
-        const constraints = { 
-          video: { 
-            facingMode: "user",
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          } 
-        };
-        const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+        const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
         setStream(mediaStream);
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
-          
-          // Update canvas size to match video dimensions
-          videoRef.current.onloadedmetadata = () => {
-            if (canvasRef.current && videoRef.current) {
-              canvasRef.current.width = videoRef.current.videoWidth;
-              canvasRef.current.height = videoRef.current.videoHeight;
-            }
-          };
         }
       } catch (err) {
         console.error('Error accessing camera:', err);
       }
     };
-  
+
     startCamera();
-  
+
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
@@ -155,33 +146,22 @@ const PhotoBooth: React.FC = () => {
     await audio.play();
   };
 
-  // Add a handler for image sticker selection
-
-// Update your handleStickerDragStart function
-const handleStickerDragStart = (type: string, color: string) => {
-  // Log for debugging
-  console.log('Starting drag for icon:', type, color);
-  // Store as regular icon sticker (not image)
-  setIsDraggingSticker(`${type}-${color}`);
-};
-
-// Keep your image sticker handler separate
-const handleImageStickerDragStart = (id: string, imageSrc: string) => {
-  // Log for debugging
-  console.log('Starting drag for image:', id, imageSrc);
-  setIsDraggingSticker(`image-${id}`);
-  sessionStorage.setItem('draggedStickerSrc', imageSrc);
-};
-
 
   const capturePhoto = async () => {
     if (videoRef.current && canvasRef.current) {
       await playShutterSound();
       
-      const context = canvasRef.current.getContext('2d');
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+      
       if (context) {
-        context.drawImage(videoRef.current, 0, 0, 640, 480);
-        const photoData = canvasRef.current.toDataURL('image/jpeg');
+        // Set canvas to match video's actual dimensions
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const photoData = canvas.toDataURL('image/jpeg');
         setPhotos(prev => [...prev, photoData]);
       }
     }
@@ -362,35 +342,17 @@ const capturePhotoStrip = async () => {
   }
 };
 
-const downloadStrip = async () => {
-  const stripImage = await capturePhotoStrip();
-  if (stripImage) {
-    try {
+  const downloadStrip = async () => {
+    const stripImage = await capturePhotoStrip();
+    if (stripImage) {
+      const link = document.createElement('a');
       const date = new Date();
       const formattedDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
-      const filename = `kawaii-photobooth-${formattedDate}.jpg`;
-      
-      // Send to server
-      await fetch('http://localhost:3001/save-photo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          imageData: stripImage,
-          filename 
-        }),
-      });
-      
-      alert(`Photo saved to your-photo-strip/${filename}`);
-    } catch (error) {
-      console.error('Error saving photo:', error);
-      // Fall back to browser download
-      const link = document.createElement('a');
-      link.download = `kawaii-photobooth.jpg`;
+      link.download = `kawaii-photobooth-${formattedDate}.jpg`;
       link.href = stripImage;
       link.click();
     }
-  }
-};
+  };
 
   const shareStrip = async () => {
     try {
@@ -516,9 +478,99 @@ const downloadStrip = async () => {
     };
   }, []);
 
+  // Detect mobile device on component mount
+  useEffect(() => {
+    const checkMobile = () => {
+      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    };
+    setIsMobileDevice(checkMobile());
+  }, []);
+
+  // Add these new handlers for mobile-friendly sticker placement
+  const handleStickerClick = (type: string, color: string) => {
+    if (isMobileDevice) {
+      setSelectedStickerForPlacement({
+        type,
+        color,
+        isImage: false
+      });
+    }
+  };
+
+  const handleImageStickerClick = (id: string, imageSrc: string) => {
+    if (isMobileDevice) {
+      setSelectedStickerForPlacement({
+        type: id,
+        color: '',
+        isImage: true,
+        imageSrc
+      });
+    }
+  };
+
+  const handlePhotoClick = (photoIndex: number, e: React.MouseEvent) => {
+    if (selectedStickerForPlacement) {
+      e.preventDefault();
+      
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      
+      if (selectedStickerForPlacement.isImage) {
+        const newSticker: Sticker = {
+          id: `sticker-${Date.now()}`,
+          type: selectedStickerForPlacement.type,
+          photoIndex,
+          position: { x, y },
+          color: '',
+          rotation: 0,
+          scale: 1,
+          isImage: true,
+          imageSrc: selectedStickerForPlacement.imageSrc
+        };
+        setStickers(prev => [...prev, newSticker]);
+      } else {
+        const newSticker: Sticker = {
+          id: `sticker-${Date.now()}`,
+          type: selectedStickerForPlacement.type,
+          photoIndex,
+          position: { x, y },
+          color: selectedStickerForPlacement.color,
+          rotation: 0,
+          scale: 1,
+          isImage: false
+        };
+        setStickers(prev => [...prev, newSticker]);
+      }
+      
+      // Clear selection after placing
+      setSelectedStickerForPlacement(null);
+    }
+  };
+
+  const cancelStickerSelection = () => {
+    setSelectedStickerForPlacement(null);
+  };
+
+  // Existing handlers - update to support both desktop and mobile
+  const handleStickerDragStart = (type: string, color: string) => {
+    if (!isMobileDevice) {
+      console.log('Starting drag for icon:', type, color);
+      setIsDraggingSticker(`${type}-${color}`);
+    }
+  };
+
+  const handleImageStickerDragStart = (id: string, imageSrc: string) => {
+    if (!isMobileDevice) {
+      console.log('Starting drag for image:', id, imageSrc);
+      setIsDraggingSticker(`image-${id}`);
+      sessionStorage.setItem('draggedStickerSrc', imageSrc);
+    }
+  };
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold text-cute-pink text-center mb-8 flex items-center justify-center gap-2">
+    <div className="container mx-auto px-2 py-4 max-w-full overflow-hidden">
+      <h1 className="text-4xl font-bold text-cute-pink text-center mb-4 md:mb-8 flex items-center justify-center gap-1 md:gap-2">
         <Sparkles className="sparkle" size={32} />
         Kawaii Photobooth
         <Sparkles className="sparkle" size={32} />
@@ -526,7 +578,7 @@ const downloadStrip = async () => {
 
       {showConfetti && <div className="confetti-overlay" />}
 
-      <div className="grid md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
         <div className="space-y-4">
           <div className="relative rounded-2xl overflow-hidden shadow-kawaii bg-white">
             {isCapturing && (
@@ -599,23 +651,48 @@ const downloadStrip = async () => {
 
 
               <h3 className="text-center text-lg font-medium text-soft-charcoal mb-2">Stickers</h3>
-              <div className="flex flex-wrap gap-2 justify-center">
+              <div className="flex flex-wrap gap-2 justify-center px-1 max-w-full overflow-x-auto pb-2">
                 {STICKERS.map(sticker => (
                   <div
                     key={sticker.type}
-                    draggable
+                    draggable={!isMobileDevice}
+                    onClick={() => handleStickerClick(sticker.type, sticker.color)}
                     onDragStart={() => handleStickerDragStart(sticker.type, sticker.color)}
-                    className={`p-2 rounded-full bg-white shadow-kawaii button-bounce sticker-${sticker.animation} cursor-grab`}
+                    className={`p-2 rounded-full bg-white shadow-kawaii button-bounce sticker-${sticker.animation} cursor-grab
+                      ${selectedStickerForPlacement && !selectedStickerForPlacement.isImage && 
+                        selectedStickerForPlacement.type === sticker.type ? 'ring-2 ring-cute-pink ring-offset-2' : ''}`}
                   >
                     <sticker.icon size={24} color={sticker.color} />
                   </div>
                 ))}
               </div>
 
+              {/* Use an updated version of your ImageStickerSelector */}
               <ImageStickerSelector 
-                onStickerSelect={handleImageStickerDragStart}
+                onStickerSelect={handleImageStickerDragStart} 
+                onStickerClick={handleImageStickerClick}
+                selectedStickerId={selectedStickerForPlacement?.isImage ? selectedStickerForPlacement.type : null}
               />
-              
+
+              {/* Add a cancel button when a sticker is selected */}
+              {selectedStickerForPlacement && (
+                <div className="text-center mt-2">
+                  <button 
+                    onClick={cancelStickerSelection}
+                    className="bg-gray-200 px-4 py-2 rounded-full text-sm"
+                  >
+                    Cancel Selection
+                  </button>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Tap on a photo to place the selected sticker
+                  </p>
+                  {isMobileDevice && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Tap on any placed sticker to select it, then tap the trash icon to delete.
+                    </p>
+                  )}
+                </div>
+              )}
               <h3 className="text-center text-lg font-medium text-soft-charcoal mb-2">Fonts</h3>
               <div className="space-y-2">
                 <div className="flex gap-2 justify-center">
@@ -666,24 +743,33 @@ const downloadStrip = async () => {
              onDrop={(e) => handleStripDrop(e)}
              >
           <div className="space-y-4">
-            {photos.map((photo, index) => (
+          {photos.map((photo, index) => (
               <div
                 key={index}
                 ref={el => photoRefs.current[index] = el}
-                className="relative overflow-hidden"
-                style={{ position: 'relative' }}
+                className="relative overflow-hidden mb-4"
+                style={{ 
+                  position: 'relative',
+                  height: 'auto',  
+                  maxHeight: '240px',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}
+                onClick={(e) => handlePhotoClick(index, e)}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => handlePhotoDrop(index, e)}
               >
                 {/* Wrap the image with the PhotoFrame component */}
                 <PhotoFrame backgroundStyle={selectedBackground} isIndividualPhoto={true} data-photo-frame>
-                <div className="overflow-hidden">
-                  <img
-                    src={photo}
-                    alt={`Photo ${index + 1}`}
-                    className={`w-full h-full object-cover ${selectedFilter}`}
-                  />
-                </div>
+                  <div className="overflow-hidden flex justify-center">
+                    <img
+                      src={photo}
+                      alt={`Photo ${index + 1}`}
+                      className={`w-auto max-w-full h-auto max-h-full ${selectedFilter}`}
+                      style={{ objectFit: 'contain' }}
+                    />
+                  </div>
                 </PhotoFrame>
                 
                 {stickers
