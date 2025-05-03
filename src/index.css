@@ -228,3 +228,34 @@ svg {
   background-repeat: repeat !important;
 }
 
+/* Add this to your stylesheet or inline style */
+@media (max-width: 768px) {
+  .photo-strip {
+    padding: 8px !important;
+  }
+  
+  .photo-strip > div {
+    margin-bottom: 8px;
+  }
+
+  .sticker-container {
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 100%;
+  }
+  
+  /* Hide certain UI elements on small screens if needed */
+  .mobile-hidden {
+    display: none;
+  }
+  
+  /* Ensure image proportions */
+  .photo-container img {
+    width: auto;
+    height: auto;
+    max-height: 100%;
+    max-width: 100%;
+    object-fit: contain;
+  }
+}
+

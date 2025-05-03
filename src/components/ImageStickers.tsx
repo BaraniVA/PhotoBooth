@@ -68,7 +68,9 @@ export const IMAGE_STICKERS: ImageSticker[] = [
 // Create a component for displaying selectable image stickers
 const ImageStickerSelector: React.FC<{
   onStickerSelect: (id: string, imageSrc: string) => void;
-}> = ({ onStickerSelect }) => {
+  onStickerClick?: (id: string, imageSrc: string) => void;
+  selectedStickerId?: string | null;
+}> = ({ onStickerSelect, onStickerClick, selectedStickerId }) => {
   return (
     <div>
       <h3 className="text-center text-lg font-medium text-soft-charcoal mb-2 mt-4">Image Stickers</h3>
@@ -77,8 +79,10 @@ const ImageStickerSelector: React.FC<{
           <div
             key={sticker.id}
             draggable
+            onClick={() => onStickerClick?.(sticker.id, sticker.imageSrc)}
             onDragStart={() => onStickerSelect(sticker.id, sticker.imageSrc)}
-            className={`p-1 rounded-lg bg-white shadow-kawaii button-bounce sticker-${sticker.animation} cursor-grab`}
+            className={`p-1 rounded-lg bg-white shadow-kawaii button-bounce sticker-${sticker.animation} cursor-grab
+              ${selectedStickerId === sticker.id ? 'ring-2 ring-cute-pink ring-offset-2' : ''}`}
           >
             <img 
               src={sticker.imageSrc} 
