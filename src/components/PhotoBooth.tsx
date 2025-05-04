@@ -113,6 +113,7 @@ const PhotoBooth: React.FC = () => {
     imageSrc?: string;
   } | null>(null);
   const [isMobileDevice, setIsMobileDevice] = useState(false);
+  const [isMirrored, setIsMirrored] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -122,18 +123,38 @@ const PhotoBooth: React.FC = () => {
   useEffect(() => {
     const startCamera = async () => {
       try {
-        const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        // Request camera with specific constraints to avoid auto-mirroring
+        const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            facingMode: "environment", // This will use back camera on mobile
+            // For desktop/laptops or devices with only front camera
+            // we'll set it to not mirror
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          } 
+        });
         setStream(mediaStream);
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
         }
       } catch (err) {
         console.error('Error accessing camera:', err);
+        
+        // Fallback to normal video if the above fails
+        try {
+          const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          setStream(fallbackStream);
+          if (videoRef.current) {
+            videoRef.current.srcObject = fallbackStream;
+          }
+        } catch (fallbackErr) {
+          console.error('Error accessing camera with fallback:', fallbackErr);
+        }
       }
     };
-
+  
     startCamera();
-
+  
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
@@ -592,7 +613,7 @@ const capturePhotoStrip = async () => {
               ref={videoRef}
               autoPlay
               playsInline
-              className={`w-full ${selectedFilter}`}
+              className={`w-full ${selectedFilter} ${isMirrored ? "transform scale-x-[-1]" : ""}`}
             />
           </div>
 
@@ -606,6 +627,12 @@ const capturePhotoStrip = async () => {
             >
               <Camera size={20} />
               <span>Take Photos</span>
+            </button>
+            <button
+              onClick={() => setIsMirrored(!isMirrored)}
+              className="button-bounce bg-soft-cream text-soft-charcoal px-4 py-2 rounded-full font-medium shadow-kawaii"
+            >
+              {isMirrored ? "Enable Mirror" : "Disable Mirror"}
             </button>
           </div>
 
