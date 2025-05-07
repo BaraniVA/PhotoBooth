@@ -188,7 +188,19 @@ const PhotoBooth: React.FC = () => {
         canvas.width = video.videoWidth || 640;
         canvas.height = video.videoHeight || 480;
         
+        if (isMirrored) {
+          // Apply mirroring to canvas just like we do with the video preview
+          context.translate(canvas.width, 0);
+          context.scale(-1, 1);
+        }
+        
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Reset transformation if we applied mirroring
+        if (isMirrored) {
+          context.setTransform(1, 0, 0, 1, 0, 0);
+        }
+        
         const photoData = canvas.toDataURL('image/jpeg');
         setPhotos(prev => [...prev, photoData]);
       }
@@ -665,7 +677,7 @@ const capturePhotoStrip = async () => {
               onClick={() => setIsMirrored(!isMirrored)}
               className="button-bounce bg-soft-cream text-soft-charcoal px-4 py-2 rounded-full font-medium shadow-kawaii"
             >
-              {isMirrored ? "Enable Mirror" : "Disable Mirror"}
+              {isMirrored ? "Disable Mirror" : "Enable Mirror"}
             </button>
           </div>
 
