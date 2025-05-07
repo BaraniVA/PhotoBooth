@@ -119,16 +119,21 @@ const PhotoBooth: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const photoStripRef = useRef<HTMLDivElement>(null);
   const photoRefs = useRef<{[key: number]: HTMLDivElement | null}>({});
+  const [cameraMode, setCameraMode] = useState<'user' | 'environment'>('user');
 
+  // Modify the startCamera function to use the selected camera mode
   useEffect(() => {
     const startCamera = async () => {
+      // Stop any existing stream
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      
       try {
-        // Request camera with specific constraints to avoid auto-mirroring
+        // Request camera with the chosen facing mode
         const mediaStream = await navigator.mediaDevices.getUserMedia({ 
           video: { 
-            facingMode: "environment", // This will use back camera on mobile
-            // For desktop/laptops or devices with only front camera
-            // we'll set it to not mirror
+            facingMode: cameraMode, // 'user' for front camera, 'environment' for back camera
             width: { ideal: 1280 },
             height: { ideal: 720 }
           } 
@@ -140,9 +145,11 @@ const PhotoBooth: React.FC = () => {
       } catch (err) {
         console.error('Error accessing camera:', err);
         
-        // Fallback to normal video if the above fails
+        // Fallback to generic video constraints if specific mode fails
         try {
-          const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          const fallbackStream = await navigator.mediaDevices.getUserMedia({ 
+            video: true 
+          });
           setStream(fallbackStream);
           if (videoRef.current) {
             videoRef.current.srcObject = fallbackStream;
@@ -152,15 +159,15 @@ const PhotoBooth: React.FC = () => {
         }
       }
     };
-  
+
     startCamera();
-  
+
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, []);
+  }, [cameraMode]); 
 
   const playShutterSound = async () => {
     const audio = new Audio('https://www.soundjay.com/mechanical/camera-shutter-click-01.mp3');
@@ -609,6 +616,32 @@ const capturePhotoStrip = async () => {
                 </span>
               </div>
             )}
+            {isMobileDevice && (
+              <button
+                onClick={() => setCameraMode(prev => prev === 'user' ? 'environment' : 'user')}
+                className="absolute top-3 right-3 z-10 w-10 h-10 bg-black bg-opacity-30 rounded-full flex items-center justify-center hover:bg-opacity-50 transition-all"
+                title={cameraMode === 'user' ? 'Switch to back camera' : 'Switch to front camera'}
+              >
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="white" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  className="w-6 h-6"
+                >
+                  <path d="M20 16v4a2 2 0 0 1-2 2h-4"></path>
+                  <path d="M14 14V9a2 2 0 0 0-2-2H8"></path>
+                  <path d="M4 8V4a2 2 0 0 1 2-2h4"></path>
+                  <path d="M10 10v5a2 2 0 0 0 2 2h4"></path>
+                  <line x1="16" y1="20" x2="20" y2="16"></line>
+                  <line x1="8" y1="4" x2="4" y2="8"></line>
+                </svg>
+              </button>
+            )}
+              
             <video
               ref={videoRef}
               autoPlay
@@ -770,7 +803,7 @@ const capturePhotoStrip = async () => {
              onDrop={(e) => handleStripDrop(e)}
              >
           <div className="space-y-4">
-          {photos.map((photo, index) => (
+            {photos.map((photo, index) => (
               <div
                 key={index}
                 ref={el => photoRefs.current[index] = el}
@@ -778,7 +811,8 @@ const capturePhotoStrip = async () => {
                 style={{ 
                   position: 'relative',
                   height: 'auto',  
-                  maxHeight: '240px',
+                  maxHeight: isMobileDevice ? '240px' : '640px', 
+                  maxWidth: isMobileDevice ? '100%' : '100%',
                   display: 'flex',
                   justifyContent: 'center',
                   alignItems: 'center'
